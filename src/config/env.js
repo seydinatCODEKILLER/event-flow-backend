@@ -63,6 +63,7 @@ export const env = {
 
   WEB_URL: process.env.WEB_URL || "",
   WEB_URL_DEV: process.env.WEB_URL_DEV || "http://localhost:3001",
+  SWAGGER_URL: process.env.SWAGGER_URL,
 
   BREVO_API_KEY: process.env.BREVO_API_KEY || "",
   MAIL_FROM: process.env.MAIL_FROM || "noreply@eventflow.com",

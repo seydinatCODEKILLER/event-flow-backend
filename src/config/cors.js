@@ -1,7 +1,7 @@
 import { env } from "./env.js";
 
 export const getCorsOptions = () => {
-  const allowedWebOrigins = [env.WEB_URL, env.WEB_URL_DEV].filter(Boolean);
+  const allowedWebOrigins = [env.WEB_URL, env.WEB_URL_DEV,env.SWAGGER_URL].filter(Boolean);
 
   return {
     origin: (origin, callback) => {
