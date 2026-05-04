@@ -1,0 +1,358 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  CLOSED
+}
+
+enum EventCategory {
+  CONCERT
+  CONFERENCE
+  SPORT
+  FETE
+  ART
+  GASTRONOMIE
+  AUTRE
+}
+
+enum TicketStatus {
+  ACTIVE
+  USED
+  CANCELLED
+}
+
+enum ScanResult {
+  VALID
+  ALREADY_USED
+  INVALID
+  CONFLICT
+}
+
+enum ScanMode {
+  ONLINE
+  OFFLINE
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum EmailType {
+  TICKET
+  TICKET_RESEND
+  EMAIL_VERIFICATION
+}
+
+enum NotificationType {
+  INSCRIPTION_CONFIRMED  // tu viens de t'inscrire à un event
+  EVENT_REMINDER         // rappel 24h avant l'event
+  MODERATOR_ASSIGNED     // tu as été assigné comme modérateur
+  TICKET_SCANNED         // ton ticket vient d'être scanné
+  EVENT_CANCELLED        // un event auquel tu es inscrit est annulé
+  EVENT_UPDATED          // un event auquel tu es inscrit a été modifié
+}
+
+enum PaymentStatus {
+  PENDING    // paiement initié
+  COMPLETED  // paiement validé (simulé côté front)
+  FAILED     // paiement échoué
+  REFUNDED   // remboursé
+}
+
+enum PaymentMethod {
+  ORANGE_MONEY
+  WAVE
+  FREE_MONEY
+  CARD
+}
+
+// ─────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────
+
+model User {
+  id             String        @id @default(uuid())
+  fullName       String
+  email          String        @unique
+  phone          String?
+  password       String
+  avatarUrl      String?
+  avatarPublicId String?
+  status         AccountStatus @default(PENDING)
+
+  verificationToken     String?   @unique
+  verificationExpiresAt DateTime?
+
+  // Token push notifications (Expo Push Token)
+  pushToken String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizedEvents Event[]          @relation("OrganizerEvents")
+  moderatedEvents EventModerator[]
+  tickets         Ticket[]
+  scanLogs        ScanLog[]
+  refreshTokens   RefreshToken[]
+  notifications   Notification[]
+  payments        Payment[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([verificationToken])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// REFRESH TOKEN
+// ─────────────────────────────────────────
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  deviceId  String?
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────
+// EVENT
+// ─────────────────────────────────────────
+
+model Event {
+  id            String        @id @default(uuid())
+  title         String
+  description   String?
+  location      String
+  city          String?
+  latitude      Float?
+  longitude     Float?
+  category      EventCategory @default(AUTRE)
+  startDate     DateTime
+  endDate       DateTime?
+  capacity      Int
+  status        EventStatus   @default(DRAFT)
+  imageUrl      String?
+  imagePublicId String?
+
+  // Paiement — null = gratuit
+  isFree        Boolean  @default(true)
+  price         Float?   // null si gratuit
+  currency      String   @default("XOF") // Franc CFA par défaut
+
+  organizerId String
+  organizer   User   @relation("OrganizerEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets    Ticket[]
+  moderators EventModerator[]
+  scanLogs   ScanLog[]
+
+  @@index([status])
+  @@index([organizerId])
+  @@index([category])
+  @@index([city])
+  @@index([startDate])
+  @@index([isFree])
+  @@map("events")
+}
+
+// ─────────────────────────────────────────
+// EVENT MODERATOR
+// ─────────────────────────────────────────
+
+model EventModerator {
+  id String @id @default(uuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("event_moderators")
+}
+
+// ─────────────────────────────────────────
+// TICKET
+// ─────────────────────────────────────────
+
+model Ticket {
+  id               String       @id @default(uuid())
+  qrPayload        String       @unique
+  qrUrl            String?
+  qrPublicId       String?
+  status           TicketStatus @default(ACTIVE)
+  usedAt           DateTime?
+  addedByOrganizer Boolean      @default(false)
+
+  eventId String
+  userId  String
+
+  // Lien vers le paiement si event payant
+  paymentId String? @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanLogs  ScanLog[]
+  emailLogs EmailLog[]
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([status])
+  @@map("tickets")
+}
+
+// ─────────────────────────────────────────
+// PAYMENT
+// ─────────────────────────────────────────
+
+model Payment {
+  id            String        @id @default(uuid())
+  amount        Float
+  currency      String        @default("XOF")
+  status        PaymentStatus @default(PENDING)
+  method        PaymentMethod
+  reference     String        @unique // référence de transaction unique
+  failureReason String?
+
+  userId  String
+  eventId String
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  completedAt DateTime?
+  refundedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  ticket Ticket?
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+  @@index([reference])
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────
+// SCAN LOG
+// ─────────────────────────────────────────
+
+model ScanLog {
+  id       String     @id @default(uuid())
+  result   ScanResult
+  mode     ScanMode   @default(ONLINE)
+  deviceId String
+
+  scannedAt DateTime
+  syncedAt  DateTime?
+
+  ticketId    String
+  eventId     String
+  moderatorId String?
+
+  createdAt DateTime @default(now())
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  moderator User?  @relation(fields: [moderatorId], references: [id])
+
+  @@index([ticketId])
+  @@index([eventId])
+  @@index([moderatorId])
+  @@index([syncedAt])
+  @@index([scannedAt])
+  @@index([mode])
+  @@map("scan_logs")
+}
+
+// ─────────────────────────────────────────
+// EMAIL LOG
+// ─────────────────────────────────────────
+
+model EmailLog {
+  id      String      @id @default(uuid())
+  to      String
+  type    EmailType
+  status  EmailStatus @default(PENDING)
+  error   String?
+  sentAt  DateTime?
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([status])
+  @@map("email_logs")
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATION
+// ─────────────────────────────────────────
+
+model Notification {
+  id      String           @id @default(uuid())
+  type    NotificationType
+  title   String
+  body    String
+  isRead  Boolean          @default(false)
+  metadata Json?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+
