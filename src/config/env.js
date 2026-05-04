@@ -3,7 +3,7 @@ import "dotenv/config";
 const isProd = process.env.NODE_ENV === "production";
 
 // ─── Validation au démarrage ──────────────────────────────────
-const REQUIRED_ALWAYS = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
+const REQUIRED_ALWAYS = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET", "DIRECT_URL"];
 
 const REQUIRED_IN_PROD = [
   "CLOUDINARY_CLOUD_NAME",
@@ -48,6 +48,7 @@ export const env = {
   IS_DEV: process.env.NODE_ENV === "development",
 
   DATABASE_URL: process.env.DATABASE_URL,
+  DIRECT_URL: process.env.DIRECT_URL,
 
   JWT_SECRET: process.env.JWT_SECRET,
   JWT_DURATION: process.env.JWT_DURATION || "15m",

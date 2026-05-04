@@ -109,7 +109,7 @@ export class AuthService {
 
       // Envoi de l'email de vérification
       const webUrl = env.IS_PROD ? env.WEB_URL : env.WEB_URL_DEV;
-      const verificationLink = `${webUrl}/verify-email?token=${verificationToken}`;
+      const verificationLink = `${webUrl}/verify?token=${verificationToken}`;
 
       await sendEmail({
         to: user.email,
@@ -316,8 +316,6 @@ export class AuthService {
   async revokeAllTokens(userId) {
     await authRepo.revokeAllUserTokens(userId);
   }
-
-  // ... tes méthodes existantes (register, verifyEmail, login, etc.)
 
   /**
    * Activation compte public — utilisé après inscription via lien public.
