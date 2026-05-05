@@ -357,4 +357,31 @@ export class AuthService {
       ...tokens,
     };
   }
+
+  async resendVerification(email) {
+    const user = await authRepo.findByEmail(email);
+
+    if (!user) throw new NotFoundError("Aucun compte avec cet email");
+    if (user.status === "ACTIVE")
+      throw new ConflictError("Ce compte est déjà activé");
+
+    const verificationToken = generateVerificationToken();
+    await authRepo.update(user.id, {
+      verificationToken,
+      verificationExpiresAt: new Date(Date.now() + VERIFICATION_TOKEN_EXPIRES),
+    });
+
+    const webUrl = env.IS_PROD ? env.WEB_URL : env.WEB_URL_DEV;
+    const verificationLink = `${webUrl}/verify?token=${verificationToken}`;
+
+    await sendEmail({
+      to: user.email,
+      toName: user.fullName,
+      subject: "Vérifiez votre adresse email — EventFlow",
+      html: verificationEmailTemplate({
+        fullName: user.fullName,
+        verificationLink,
+      }),
+    });
+  }
 }

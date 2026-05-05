@@ -11,6 +11,7 @@ import {
   refreshTokenSchema,
   updateProfileSchema,
   activateAccountSchema,
+  resendVerificationSchema,
 } from "./auth.validator.js";
 import {
   authLimiter,
@@ -301,6 +302,60 @@ router.post(
   "/activate",
   validate(activateAccountSchema),
   authController.activatePublicAccount,
+);
+
+/**
+ * @swagger
+ * /api/auth/resend-verification:
+ *   post:
+ *     summary: Renvoyer l'email de vérification
+ *     description: |
+ *       Génère un nouveau token de vérification et l'envoie par email.
+ *       Utile si le lien précédent a expiré ou n'est jamais arrivé.
+ *       Ne connecte pas l'utilisateur (le compte doit être en statut PENDING).
+ *     tags: [Auth]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "moussa@eventflow.com"
+ *     responses:
+ *       200:
+ *         description: Email de vérification renvoyé avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: "boolean", example: true }
+ *                 message:
+ *                   type: "string"
+ *                   example: "Un nouvel email de vérification a été envoyé."
+ *       404:
+ *         description: Aucun compte trouvé avec cet email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Le compte est déjà actif, la vérification n'est plus nécessaire
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post(
+  "/resend-verification",
+  validate(resendVerificationSchema),
+  authController.resendVerification,
 );
 
 export default router;

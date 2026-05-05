@@ -64,3 +64,9 @@ export const activateAccountSchema = z.object({
     password: passwordSchema,
   }),
 });
+
+export const resendVerificationSchema = z.object({
+  body: z.object({
+    email: z.string().email("Email invalide").toLowerCase(),
+  }),
+});
