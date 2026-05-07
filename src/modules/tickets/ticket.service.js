@@ -60,7 +60,6 @@ export class TicketService {
       );
     }
 
-    // Récupérer l'event pour le titre dans la notif
     const event = await eventRepo.findById(eventId);
     if (!event) throw new NotFoundError("Événement");
 
@@ -82,19 +81,35 @@ export class TicketService {
     let qrUrl = null;
     let qrPublicId = null;
 
-    try {
-      const uploaded = await uploader.uploadBuffer(
-        buffer,
-        "eventflow/qrcodes",
-        `qr_${ticket.id}`,
-      );
-      qrUrl = uploaded.url;
-      qrPublicId = uploaded.public_id;
-    } catch (err) {
-      logger.warn(
-        { err, ticketId: ticket.id },
-        "QR upload Cloudinary échoué — fallback base64",
-      );
+    // ── NOUVEAU : Retry synchrone robuste (couvre 95% des micro-coupures) ─
+    const maxSyncRetries = 3;
+    for (let attempt = 1; attempt <= maxSyncRetries; attempt++) {
+      try {
+        const uploaded = await uploader.uploadBuffer(
+          buffer,
+          "eventflow/qrcodes",
+          `qr_${ticket.id}`,
+        );
+        qrUrl = uploaded.url;
+        qrPublicId = uploaded.public_id;
+        break;
+      } catch (err) {
+        logger.warn(
+          { err, ticketId: ticket.id, attempt },
+          `Tentative ${attempt}/${maxSyncRetries} d'upload QR échouée`,
+        );
+
+        if (attempt < maxSyncRetries) {
+          // Attendre 2s, puis 4s avant de réessayer
+          await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+        } else {
+          logger.error(
+            { ticketId: ticket.id },
+            "Upload synchrone impossible, lancement du fallback asynchrone",
+          );
+          this.finalizeQrUploadInBackground(ticket.id, buffer).catch(() => {});
+        }
+      }
     }
 
     const updated = await ticketRepo.updateTicket(ticket.id, {
@@ -103,7 +118,6 @@ export class TicketService {
       ...(qrPublicId && { qrPublicId }),
     });
 
-    // ── Notifier l'user — inscription confirmée ────────────────
     notifService
       .notify({
         userId,
@@ -115,6 +129,46 @@ export class TicketService {
       .catch(() => {});
 
     return { ticket: updated, qrUrl, buffer };
+  }
+
+  // ─── NOUVEAU : Upload de secours en arrière-plan ─────────────
+  async finalizeQrUploadInBackground(ticketId, buffer, attempt = 0) {
+    const maxAttempts = 5;
+    if (attempt >= maxAttempts) {
+      logger.error(
+        { ticketId },
+        "Upload QR définitivement échoué même en arrière-plan",
+      );
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 10000 * (attempt + 1)));
+
+    try {
+      const uploader = new MediaUploader();
+      const uploaded = await uploader.uploadBuffer(
+        buffer,
+        "eventflow/qrcodes",
+        `qr_${ticketId}`,
+      );
+
+      // Met à jour la BDD silencieusement
+      await ticketRepo.updateTicket(ticketId, {
+        qrUrl: uploaded.url,
+        qrPublicId: uploaded.public_id,
+      });
+
+      logger.info(
+        { ticketId, publicId: uploaded.public_id },
+        "✅ QR upload réussi en arrière-plan !",
+      );
+    } catch (err) {
+      logger.warn(
+        { err, ticketId, attempt },
+        "Échec upload AR, nouveau retry...",
+      );
+      return this.finalizeQrUploadInBackground(ticketId, buffer, attempt + 1);
+    }
   }
 
   // ─── Envoyer le ticket par email (organisateur) ───────────────

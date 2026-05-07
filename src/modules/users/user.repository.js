@@ -59,6 +59,7 @@ export class UserRepository {
       select: {
         id: true,
         status: true,
+        qrUrl: true,
         usedAt: true,
         createdAt: true,
         event: {
