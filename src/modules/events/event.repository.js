@@ -285,4 +285,50 @@ export class EventRepository extends BaseRepository {
     });
     return tickets.map((t) => t.userId);
   }
+
+  // ─── Events modérés ──────────────────────────────────────────
+
+  findManyByModerator(moderatorId, options = {}) {
+    const { page, limit, status } = options;
+
+    return prisma.event.findMany({
+      where: {
+        moderators: {
+          some: {
+            userId: moderatorId,
+          },
+        },
+        ...(status && { status }),
+      },
+      include: {
+        organizer: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            avatarUrl: true,
+          },
+        },
+        _count: {
+          select: { tickets: true, scanLogs: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: page && limit ? (page - 1) * limit : undefined,
+      take: limit || undefined,
+    });
+  }
+
+  countByModerator(moderatorId, status) {
+    return prisma.event.count({
+      where: {
+        moderators: {
+          some: {
+            userId: moderatorId,
+          },
+        },
+        ...(status && { status }),
+      },
+    });
+  }
 }

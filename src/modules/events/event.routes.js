@@ -149,6 +149,51 @@ router.get("/", validate(getEventsSchema), eventController.getEvents);
 
 /**
  * @swagger
+ * /api/events/moderated:
+ *   get:
+ *     summary: Lister les événements dont je suis modérateur
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema: { type: "integer", default: 1 }
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema: { type: "integer", default: 10 }
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [DRAFT, PUBLISHED, ONGOING, CLOSED]
+ *     responses:
+ *       200:
+ *         description: Liste des événements modérés
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: "boolean", example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Event'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/PaginationMeta'
+ */
+router.get(
+  "/moderated",
+  validate(getEventsSchema),
+  eventController.getModeratedEvents,
+);
+
+/**
+ * @swagger
  * /api/events/{id}:
  *   get:
  *     summary: Détail d'un événement

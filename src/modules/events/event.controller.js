@@ -202,4 +202,22 @@ export class EventController {
       next(error);
     }
   }
+
+  async getModeratedEvents(req, res, next) {
+    try {
+      const { page, limit, status } = req.validated.query;
+      const result = await eventService.getModeratedEvents(req.user.id, {
+        page,
+        limit,
+        status,
+      });
+      res.status(200).json({
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

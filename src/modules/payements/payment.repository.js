@@ -20,6 +20,7 @@ export class PaymentRepository {
         event: {
           select: { id: true, title: true, price: true, currency: true },
         },
+        ticket: { select: { id: true } },
       },
     });
   }
@@ -78,7 +79,9 @@ export class PaymentRepository {
       data: {
         status: "COMPLETED",
         completedAt: new Date(),
-        ticketId,
+        ticket: {
+          connect: { id: ticketId },
+        },
       },
     });
   }

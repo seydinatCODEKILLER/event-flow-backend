@@ -79,7 +79,7 @@ export class PaymentService {
     }
 
     if (status === "COMPLETED") {
-      if (payment.ticketId) {
+      if (payment.ticket) {
         return {
           success: true,
           message: "Paiement déjà traité",

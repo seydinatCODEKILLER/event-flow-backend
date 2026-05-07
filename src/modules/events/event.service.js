@@ -467,4 +467,19 @@ export class EventService {
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
+
+  // ─── Lister les événements assignés en tant que modérateur ──
+  async getModeratedEvents(moderatorId, options = {}) {
+    const { page = 1, limit = 10, status } = options;
+
+    const [events, total] = await Promise.all([
+      eventRepo.findManyByModerator(moderatorId, { page, limit, status }),
+      eventRepo.countByModerator(moderatorId, status),
+    ]);
+
+    return {
+      data: events.map(buildEventResponse),
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
 }
