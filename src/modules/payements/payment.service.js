@@ -6,6 +6,7 @@ import {
   NotFoundError,
   BadRequestError,
   ConflictError,
+  ForbiddenError,
 } from "../../shared/errors/AppError.js";
 
 const paymentRepo = new PaymentRepository();
