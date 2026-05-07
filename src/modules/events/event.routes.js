@@ -332,6 +332,39 @@ router.patch(
 /**
  * @swagger
  * /api/events/{id}/moderators:
+ *   get:
+ *     summary: Lister les modérateurs d'un événement
+ *     tags: [Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: "string", format: "uuid" }
+ *     responses:
+ *       200:
+ *         description: Liste des modérateurs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: "boolean", example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Moderator'
+ */
+router.get(
+  "/:id/moderators",
+  validate(eventIdSchema),
+  eventController.getModerators,
+);
+
+/**
+ * @swagger
+ * /api/events/{id}/moderators:
  *   post:
  *     summary: Assigner un modérateur existant
  *     description: Réservé à l'organisateur. L'utilisateur doit avoir un compte vérifié (ACTIVE).

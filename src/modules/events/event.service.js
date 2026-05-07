@@ -320,7 +320,16 @@ export class EventService {
   async getModerators(eventId) {
     const event = await eventRepo.findById(eventId);
     if (!event) throw new NotFoundError("Événement");
-    return eventRepo.findModerators(eventId);
+
+    const moderators = await eventRepo.findModerators(eventId);
+
+    return moderators.map((m) => ({
+      id: m.id,
+      fullName: m.user.fullName,
+      email: m.user.email,
+      avatarUrl: m.user.avatarUrl,
+      assignedAt: m.assignedAt,
+    }));
   }
 
   // ─── Publier un événement ─────────────────────────────────────
@@ -440,7 +449,6 @@ export class EventService {
   }
 
   // ─── Participants d'un événement ──────────────────────────────
-  // Dans event.service.js -> getEventParticipants
   async getEventParticipants(eventId, options = {}) {
     const { page = 1, limit = 20, search } = options;
 
