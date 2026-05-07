@@ -182,6 +182,7 @@ model Event {
   tickets    Ticket[]
   moderators EventModerator[]
   scanLogs   ScanLog[]
+  payments   Payment[]
 
   @@index([status])
   @@index([organizerId])
@@ -257,13 +258,14 @@ model Payment {
   currency      String        @default("XOF")
   status        PaymentStatus @default(PENDING)
   method        PaymentMethod
-  reference     String        @unique // référence de transaction unique
+  reference     String        @unique
   failureReason String?
 
   userId  String
   eventId String
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade) // ✅ AJOUT
 
   completedAt DateTime?
   refundedAt  DateTime?
