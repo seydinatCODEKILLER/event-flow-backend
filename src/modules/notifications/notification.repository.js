@@ -10,15 +10,23 @@ export class NotificationRepository extends BaseRepository {
     const { page = 1, limit = 20 } = options;
     return prisma.notification.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" }, // Les plus récentes en premier
+      orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
     });
   }
 
   async countByUser(userId) {
+    const [total, unread] = await Promise.all([
+      prisma.notification.count({ where: { userId } }),
+      prisma.notification.count({ where: { userId, isRead: false } }),
+    ]);
+    return { total, unread };
+  }
+
+  async countUnreadByUser(userId) {
     return prisma.notification.count({
-      where: { userId },
+      where: { userId, isRead: false },
     });
   }
 

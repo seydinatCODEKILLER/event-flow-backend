@@ -21,6 +21,19 @@ export class NotificationController {
     }
   }
 
+  async getUnreadCount(req, res, next) {
+    try {
+      const result = await notifService.getUnreadCount(req.user.id);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async markAsRead(req, res, next) {
     try {
       await notifService.markAsRead(req.validated.params.id, req.user.id);

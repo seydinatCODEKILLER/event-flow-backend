@@ -48,6 +48,29 @@ router.get(
 
 /**
  * @swagger
+ * /api/notifications/unread-count:
+ *   get:
+ *     summary: Récupérer le nombre de notifications non lues
+ *     description: Retourne uniquement le nombre de notifications non lues pour l'utilisateur connecté. Très léger.
+ *     tags: [Notifications]
+ *     responses:
+ *       200:
+ *         description: Succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: "boolean", example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     count: { type: "integer", example: 4 }
+ */
+router.get("/unread-count", notificationController.getUnreadCount);
+
+/**
+ * @swagger
  * /api/notifications/read-all:
  *   patch:
  *     summary: Marquer toutes les notifications comme lues

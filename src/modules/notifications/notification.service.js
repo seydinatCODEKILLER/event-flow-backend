@@ -65,6 +65,11 @@ export class NotificationService {
     };
   }
 
+  async getUnreadCount(userId) {
+    const count = await notifRepo.countUnreadByUser(userId);
+    return { count };
+  }
+
   // ─── Marquer une notif comme lue ──────────────────────────────
   async markAsRead(notificationId, userId) {
     const result = await notifRepo.markAsRead(notificationId, userId);
